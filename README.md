@@ -28,5 +28,5 @@ Problem Statement - “As a customer servicing platform, how can I empower agent
 - *Tomasz Arodz* - *Department* - Faculty Advisor
 - *Isaac Lyu* - *Computer Science* - Student Team Member
 - *Matthew Baker* - *Computer Science* - Student Team Member
-- *Student's Name* - *major* - Student Team Member
+- *Ahmad Scruggs* - *Computer Science* - Student Team Member
 - *Student's Name* - *major* - Student Team Member
