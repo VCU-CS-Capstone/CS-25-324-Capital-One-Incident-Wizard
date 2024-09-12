@@ -1,10 +1,16 @@
-# *Your Project Description*
-## *Sponsoring Company or Organization*
+# *Incident Wizard*
+## *Capital One*
 ## *Short Project Description*
-The directory structure in this GitHub is to allow the project to have all its resources self-contained.
-Open Source software should not just be a repository of code.  There are a number of directories to help you and others who will 
-follow in your footsteps.  It'll also allow the Linux Foundation OMP Mentorship program to keep track of your project and get
-a better understanding of the problems you encountered during the development of this project. 
+Problem Statement - “As a customer servicing platform, how can I empower agents to troubleshoot issues and create actionable incidents through an interactive and conversational tool?”
+ Create a conversational incident wizard to help agents troubleshoot, pull scenario-specific documentation, and create tickets with all necessary info -
+ 1. Create a simple web application that helps agents perform basic troubleshooting and creates incidents.
+ 2. The application should be interactive and provide feedback/help similar to Eno
+ 3. The application should allow an agent to easily create an incident with all necessary context and data.
+ 4. The application should be able to suggest possible solutions based on a description of the issue that is provided by an agent.
+ 5. The application should be able to suggest help or solutions based on the agent’s recently completed actions.
+ Assumptions:
+ 1. Students have access to existing AI implementations
+ 2. Students will have access to Service Now
 
 | Folder | Description |
 |---|---|
@@ -17,10 +23,10 @@ a better understanding of the problems you encountered during the development of
 **Note:** Commits behind this fork could be automatically synced, meaning that changes made in the template are pushed into your repo. Please do not discard commits ahead (these are the updates you make to this repository).
 
 ## Project Team
-- *Mentor's Name*  - *Company Affliation* - Mentor
-- *Technical Advisor Name* - *Company Affliation* - Technical Advisor
-- *Faculty Advisor's Name* - *Department* - Faculty Advisor
-- *Student's Name* - *major* - Student Team Member
+- *Mahesh Nair*  - *Capital One* - Mentor
+- *Vinay Soni* - *Capital One* - Technical Advisor
+- *Tomasz Arodz* - *Department* - Faculty Advisor
+- *Isaac Lyu* - *Computer Science* - Student Team Member
 - *Student's Name* - *major* - Student Team Member
 - *Student's Name* - *major* - Student Team Member
 - *Student's Name* - *major* - Student Team Member
