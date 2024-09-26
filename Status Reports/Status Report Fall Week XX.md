@@ -13,13 +13,14 @@ Vinay Soni
 Tom Arodz
 
 ## 1) Accomplishments this week ##
-   - Completed Github changes
-   - Got in contact with Vinay
+   - Met with Vinay
+   - Got onboarded on the background knowledge from Vinay
    - Met as group and discussed next steps
 
 ## 2) Milestones to be completed next week ##
-   - Arrange meeting with Vinay
-   - Begin research about potential approaches
+   - Find out how to access ServiceNow
+   - Meet with Tom to ask about funding request for ChatGPT 4.0
+     
 
 ## 3) Issues, problems or concerns ##
    - None for now
