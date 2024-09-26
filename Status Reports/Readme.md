@@ -12,8 +12,8 @@ Status Report Fall Week XX.md is a template for to copy-paste into new Status re
 | Document | Tasks | Accomplishments | Issues |
 |---|---|---|---|
 | Week 1 Status Report | Up to date on deliverables | Get more info from Vinay | No problems to report! |
-| Week 2 Status Report | | | |
-| Week 3 Status Report | | | |
+| Week 2 Status Report | Up to date on deliverables| Learn more about ServiceNow, Learn more about funding request|Spoke with Vinay | No Problems to report |
+| Week 3 Status Report | Up to date on deliverables| Look into ServiceNow Developer Access, Create rough outline for Incident Wizard | Spoke with Tom|No Issues!|
 | Week 4 Status Report | | | |
 | Week 5 Status Report | | | |
 | Week 6 Status Report | | | |
