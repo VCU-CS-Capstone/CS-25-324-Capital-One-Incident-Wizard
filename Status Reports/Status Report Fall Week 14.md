@@ -13,13 +13,12 @@ Vinay Soni
 Tom Arodz
 
 ## 1) Accomplishments this week ##
-   - Met with Vinay
-   - Got onboarded on the background knowledge from Vinay
-   - Met as group and discussed next steps
+   - Completed the Fall Design Poster
+   - Met with Vinay to check over
 
 ## 2) Milestones to be completed next week ##
-   - Find out how to access ServiceNow
-   - Meet with Tom to ask about funding request for ChatGPT 4.0
+   - Start Preparing for Capstone Presentation
+   - Begin looking into acquiring OpenAI with Funding Request
      
 
 ## 3) Issues, problems or concerns ##
