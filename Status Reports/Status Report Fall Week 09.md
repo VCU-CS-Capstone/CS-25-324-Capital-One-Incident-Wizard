@@ -13,12 +13,10 @@ Vinay Soni
 Tom Arodz
 
 ## 1) Accomplishments this week ##
-   - Further researched necessary tools
-   - Completed weekly meeting with Tom
-   - Started Writing Project Proposal
+   - Individually research how to use OpenAI keys and create and train AI models.
 
 ## 2) Milestones to be completed next week ##
-   - Get Decent amount of Proposal done
+   - Find an OpenAI implementation to use
 
 ## 3) Issues, problems or concerns ##
    - None for now
