@@ -13,12 +13,11 @@ Vinay Soni
 Tom Arodz
 
 ## 1) Accomplishments this week ##
-   - Further researched necessary tools
-   - Completed weekly meeting with Tom
-   - Started Writing Project Proposal
+   - Prepare a Project Proposal presentation for the Capital One 
 
 ## 2) Milestones to be completed next week ##
-   - Get Decent amount of Proposal done
+   - Present the presentation and start the proposal
+   - Meet with Vinay to see if we can get any critiques
 
 ## 3) Issues, problems or concerns ##
    - None for now
