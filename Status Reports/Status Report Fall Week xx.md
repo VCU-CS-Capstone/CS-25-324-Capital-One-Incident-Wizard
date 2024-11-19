@@ -13,12 +13,12 @@ Vinay Soni
 Tom Arodz
 
 ## 1) Accomplishments this week ##
-   - Further researched necessary tools
-   - Completed weekly meeting with Tom
-   - Started Writing Project Proposal
+   - Begin our Design Poster
+   - Meet up and create diagram to visualize interaction between user and our application
 
 ## 2) Milestones to be completed next week ##
-   - Get Decent amount of Proposal done
+   - Get our poster checked by Vinay and Tom
+   - Find out more about funding for OpenAI
 
 ## 3) Issues, problems or concerns ##
    - None for now
