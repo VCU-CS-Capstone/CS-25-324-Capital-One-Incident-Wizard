@@ -4,6 +4,7 @@ services:
     build: 
       context: ./incident-wizard-backend
       dockerfile: Dockerfile
+    #image: ahmadscruggs1/my-backend:latest
     container_name: flask-backend
     ports:
       - "5000:5000"  # Host port : Container port
@@ -19,6 +20,7 @@ services:
     build:
       context: ./incident-wizard-ui
       dockerfile: Dockerfile
+    #image: ahmadscruggs1/my-frontend:latest
     container_name: react-frontend
     ports:
       - "3000:80"  # Host port : Container's NGINX port
