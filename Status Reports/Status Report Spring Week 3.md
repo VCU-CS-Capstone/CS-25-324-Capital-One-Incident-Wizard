@@ -18,7 +18,7 @@ Tom Arodz
 
 ## 2) Milestones to be completed next week ##
    - Keep iterating on our prototype
-   - Meet with Tom
+   - Meet with Tom and Vinay
 
 ## 3) Issues, problems or concerns ##
    - None for now
