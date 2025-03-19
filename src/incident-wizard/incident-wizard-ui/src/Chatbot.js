@@ -1,36 +1,49 @@
-import React, { useEffect } from "react";
+import React, { useState } from "react";
 
 const Chatbot = () => {
-  useEffect(() => {
-    // Check if the script is already added to avoid duplicate scripts
-    if (!document.getElementById("openwidget-script")) {
-      const script = document.createElement("script");
-      script.id = "openwidget-script";
-      script.async = true;
-      script.type = "text/javascript";
-      script.src = "https://cdn.openwidget.com/openwidget.js";
+  const [messages, setMessages] = useState([
+    { text: "Hello! How can I assist you today?", sender: "bot" },
+  ]);
+  const [input, setInput] = useState("");
 
-      // Append the script to the document head
-      document.head.appendChild(script);
-
-      // Initialize the chatbot configuration
-      script.onload = () => {
-        window.ow = window.ow || {};
-        window.ow.organizationId = "41277a6a-c49c-4136-9e3b-3dddfaccbb1f";
-        window.ow.template_id = "8952b9e3-423c-424e-b122-e0462f58ff89";
-        window.ow.integration_name = "manual_settings";
-        window.ow.product_name = "chatbot";
-        if (window.OpenWidget && typeof window.OpenWidget.init === "function") {
-          window.OpenWidget.init();
-        }
-      };
-    }
-  }, []);
+  const handleSendMessage = () => {
+    if (input.trim() === "") return;
+    const newMessages = [...messages, { text: input, sender: "user" }];
+    setMessages(newMessages);
+    setInput("");
+    
+    // Placeholder for API call integration
+    setTimeout(() => {
+      setMessages((prev) => [...prev, { text: "(Bot response coming soon...)", sender: "bot" }]);
+    }, 1000);
+  };
 
   return (
-    <div>
-      <h2>Chatbot Integration</h2>
-      <p>Your chatbot is now integrated into this React application!</p>
+    <div className="w-full max-w-md mx-auto shadow-md rounded-lg p-4 bg-white">
+      <div className="h-96 overflow-y-auto border-b p-2">
+        {messages.map((msg, index) => (
+          <div
+            key={index}
+            className={`mb-2 p-2 max-w-[80%] rounded-lg text-sm ${
+              msg.sender === "user" ? "bg-blue-500 text-white ml-auto" : "bg-gray-200 text-black"
+            }`}
+          >
+            {msg.text}
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center p-2">
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Type a message..."
+          className="flex-1 mr-2 border p-2 rounded"
+        />
+        <button onClick={handleSendMessage} className="bg-blue-500 text-white px-4 py-2 rounded">
+          Send
+        </button>
+      </div>
     </div>
   );
 };
