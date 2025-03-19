@@ -12,7 +12,7 @@ function Layout({ children }) {
             <Link to="/" style={styles.logoLink}>
                 <img src={logo} alt="Company Logo" style={styles.logo} />
             </Link>
-            <h1>Incident Wizard Demo!</h1>
+            <h1>Incident Wizard</h1>
           </div>
   
           {/* Button that routes to /test */}
