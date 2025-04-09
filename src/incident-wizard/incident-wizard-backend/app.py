@@ -53,9 +53,9 @@ def chat():
 
         # Call the openai Chat Completion endpoint
         response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=messages
-        )
+    model="gpt-3.5-turbo",
+    messages=messages
+)
 
         # Extract the assistant's reply
         reply = response.choices[0].message.content
@@ -120,23 +120,6 @@ def create_incident():
             "impact": impact,
             "urgency": urgency
         }
-
-        # optional_fields = [
-        #     ("category", category),
-        #     ("subcategory", subcategory),
-        #     ("service", service),
-        #     ("service_offering", service_offering),
-        #     ("cmdb_ci", configuration_item),  # field name for Configuration Item
-        #     ("u_operating_system", operating_system),  # custom field (example)
-        #     ("u_browser", browser),                    # custom field (example)
-        #     ("state", state),
-        #     ("impact", impact),
-        #     ("urgency", urgency),
-        # ]
-
-        # for key, value in optional_fields:
-        #     if value is not None:
-        #         payload[key] = value
 
         # The URL for creating new incidents via the ServiceNow Table API
         url = f"{SN_INSTANCE}"
