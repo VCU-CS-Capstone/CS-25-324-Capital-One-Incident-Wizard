@@ -77,6 +77,7 @@ If the user doesn't have or doesn't know a field, set it to "N/A".
         content: `User environment details: OS = ${os}, Browser = ${browser}.`
       };
       const updated = [...prev];
+      // Insert system info as second message
       updated.splice(1, 0, newSystemMsg);
       return updated;
     });
@@ -89,16 +90,15 @@ If the user doesn't have or doesn't know a field, set it to "N/A".
   const handleSendMessage = async () => {
     if (!input.trim()) return;
 
-    // 1. Append the user's message to the conversation
+    // Append the user's message to the conversation
     const userMessage = { role: "user", content: input };
     const updatedMessages = [...messages, userMessage];
-
     setMessages(updatedMessages);
     setInput("");
     setLoading(true);
 
     try {
-      // 2. Call the backend chat endpoint with the conversation history
+      // Call the backend chat endpoint with the conversation history
       const response = await fetch("http://localhost:5000/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -108,10 +108,10 @@ If the user doesn't have or doesn't know a field, set it to "N/A".
       const data = await response.json();
 
       if (data.success) {
-        const botReply = data.reply;
+        let botReply = data.reply;
         let botMessage = { role: "assistant", content: botReply };
 
-        // 3. Attempt to parse the bot's reply as JSON if it starts with '{'
+        // Attempt to parse the bot's reply as JSON if it starts with '{'
         let incidentFields;
         try {
           const curlyIndex = botReply.indexOf("{");
@@ -123,7 +123,7 @@ If the user doesn't have or doesn't know a field, set it to "N/A".
           console.error("Failed to parse JSON:", err);
         }
 
-        // 4. If a valid final JSON payload is detected, auto-create the incident.
+        // If a valid final JSON payload is detected, auto-create the incident.
         if (incidentFields && incidentFields.short_description) {
           console.log("Parsed incident fields:", incidentFields);
           // Get OS and Browser details again for the payload
@@ -155,13 +155,12 @@ If the user doesn't have or doesn't know a field, set it to "N/A".
             const createData = await createIncidentResponse.json();
 
             if (createIncidentResponse.ok) {
-              // Incident created successfully (HTTP 201)
+              // Incident created successfully
               botMessage = {
                 role: "assistant",
                 content: `Incident created! Number: ${createData.number}, Sys_ID: ${createData.sys_id}`
               };
             } else {
-              // Incident creation failed; provide error details from backend
               botMessage = {
                 role: "assistant",
                 content: `Sorry, incident creation failed:\n${createData.details}`
@@ -176,10 +175,9 @@ If the user doesn't have or doesn't know a field, set it to "N/A".
           }
         }
 
-        // 5. Append the bot's reply to the conversation
+        // Append the bot's reply to the conversation
         setMessages((prev) => [...prev, botMessage]);
       } else {
-        // Handle error response from the chat API endpoint
         const errorMsg = {
           role: "assistant",
           content: data.error || "Error: Unable to get a response from the bot."
@@ -203,93 +201,63 @@ If the user doesn't have or doesn't know a field, set it to "N/A".
         <h1 className="header-title">IT Support Chatbot</h1>
       </header>
 
-      {/* Floating button to open chat window */}
+      {/* When the chat window is closed, show a button to open it */}
       {!isOpen && (
-        <button
-          onClick={toggleChat}
-          className="fixed bottom-4 right-4 w-14 h-14 rounded-full bg-white border border-gray-200 shadow-lg flex items-center justify-center"
-        >
-          <img
-            src={logo}
-            alt="Open Chat"
-            className="object-contain"
-            style={{ height: "32px", width: "auto" }}
-          />
+        <button onClick={toggleChat} className="small-button" aria-label="Open Chat">
+          <img src={logo} alt="Open Chat" />
         </button>
       )}
 
       {/* Chat window */}
       {isOpen && (
-        <div
-          className="fixed bottom-20 right-4 w-full max-w-md bg-white border border-gray-300 shadow-2xl rounded-xl z-50"
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            maxHeight: "80vh",
-            overflow: "hidden"
-          }}
-        >
+        <div className="chat-container">
           {/* Chat window header */}
-          <div className="py-2 px-4 bg-blue-600 rounded-t-xl flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <img
-                src={logo}
-                alt="Chat Logo"
-                style={{ height: "32px", width: "auto" }}
-                className="object-contain"
-              />
-              <h2 className="text-white font-semibold text-lg">Incident Wizard Chat</h2>
+          <div className="header" style={{ padding: "10px", marginBottom: "10px" }}>
+            <div style={{ display: "flex", alignItems: "center" }}>
+              <img src={logo} alt="Chat Logo" style={{ height: "40px", marginRight: "10px" }} />
+              <h2>Incident Wizard Chat</h2>
             </div>
-            <button
-              onClick={toggleChat}
-              className="text-white p-1 text-xl font-bold bg-transparent border-none"
-            >
+            <button onClick={toggleChat} style={{ fontSize: "18px", background: "none", border: "none", cursor: "pointer" }}>
               ✕
             </button>
           </div>
 
-          {/* Conversation messages */}
-          <div
-            style={{ flex: 1, minHeight: 0, overflowY: "auto" }}
-            className="p-3 space-y-2"
-          >
+          {/* Message display area */}
+          <div className="messages-container">
             {messages.map((msg, index) => {
               // Hide system messages from user display
               if (msg.role === "system") return null;
-              const isUser = msg.role === "user";
               return (
                 <div
                   key={index}
-                  className={`p-2 rounded-lg text-sm max-w-[80%] ${
-                    isUser
-                      ? "bg-blue-500 text-white ml-auto"
-                      : "bg-gray-200 text-black mr-auto"
-                  }`}
+                  className={`message ${msg.role === "user" ? "user-message" : "bot-message"}`}
                 >
                   {msg.content}
                 </div>
               );
             })}
-            {loading && (
-              <div className="text-sm text-gray-500">Bot is typing...</div>
-            )}
+            {loading && <div className="status">Bot is typing...</div>}
           </div>
 
-          {/* Message input area */}
-          <div className="p-2 border-t border-gray-300 flex">
+          {/* Input area */}
+          <div className="input-form">
             <input
               type="text"
+              className="input-field"
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                // Check if the Enter key is pressed
+                if (e.key === "Enter") {
+                  // Optionally, prevent default behavior if necessary:
+                  // e.preventDefault();
+                  handleSendMessage();
+                }
+              }}
               placeholder="Type a message..."
-              className="flex-1 mr-2 border border-gray-300 p-2 rounded"
               disabled={loading}
             />
-            <button
-              onClick={handleSendMessage}
-              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-              disabled={loading}
-            >
+            <button className="send-button" onClick={handleSendMessage} disabled={loading}>
               {loading ? "Sending..." : "Send"}
             </button>
           </div>

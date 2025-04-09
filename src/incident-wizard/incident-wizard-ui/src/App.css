@@ -1,4 +1,4 @@
-/* App.css */
+
 
 /* Overall container */
 .app-container {
@@ -13,10 +13,9 @@
   
   /* Header */
   .header {
-    background-color: #1e2a78; /* Dark blue */
-    color: white;
+    color: black;
     width: 100%;
-    text-align: center;
+    text-align: left;
     padding: 20px;
     border-radius: 8px;
   }
@@ -99,3 +98,21 @@
     color: #555;
   }
   
+  .small-button {
+    width: 60px;              /* Adjust width as needed */
+    height: 60px;             /* Adjust height as needed */
+    border-radius: 50%;        /* Makes the button circular */
+    border: 2px solid black;   /* Adds a 2px solid black outline */
+    background-color: transparent; /* Change to a solid color if desired */
+    padding: 0;                /* Remove default padding */
+    cursor: pointer;           /* Pointer cursor for clickability */
+    display: inline-flex;      /* Using flexbox to center content */
+    align-items: center;       /* Center the image vertically */
+    justify-content: center;   /* Center the image horizontally */
+  }
+  
+  .small-button img {
+    width: 100%;              /* Ensure image fills the button */
+    height: 100%;
+    display: block;           /* Remove any extra spacing */
+  }
