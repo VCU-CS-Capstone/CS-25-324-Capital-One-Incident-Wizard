@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ user.name }}'s Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="container">
+    <h1>Welcome, {{ user.name }}</h1>
+    <p>Account Number: ****{{ user.account[-4:] }}</p>
+    <p>Balance: ${{ user.balance }}</p>
+    <hr>
+    <h3>Recent Transactions</h3>
+    <ul>
+      {% for tx in user.transactions %}
+        <li>{{ tx.date }} - {{ tx.description }} - ${{ tx.amount }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+</body>
+</html>
