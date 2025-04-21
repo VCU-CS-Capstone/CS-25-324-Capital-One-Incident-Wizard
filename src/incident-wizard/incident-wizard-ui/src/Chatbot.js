@@ -1,264 +1,288 @@
+// Chatbot.jsx  –  duplicate‑aware
 import React, { useState, useEffect } from "react";
+import { useGlobalStore } from "./GlobalStoreContext";
+import { v4 as uuidv4 } from "uuid";
 import "./App.css";
 import logo from "./Capital_One-Logo.wine.png";
 
-// Function to detect user's operating system and browser
-function getBrowserAndOS() {
-  const userAgent = navigator.userAgent;
-  const platform = navigator.platform;
+/* -------- util: quick OS / browser detection -------- */
+function detectBrowserAndOS() {
+  const ua = navigator.userAgent;
+  let os = "Unknown";
+  if (ua.includes("Win")) os = "Windows";
+  else if (ua.includes("Mac")) os = "macOS";
+  else if (ua.includes("Linux")) os = "Linux";
 
-  let os = "Unknown OS";
-  let browser = "Unknown Browser";
-
-  if (/Win/.test(platform)) os = "Windows";
-  else if (/Mac/.test(platform)) os = "MacOS";
-  else if (/Linux/.test(platform)) os = "Linux";
-  else if (/Android/.test(userAgent)) os = "Android";
-  else if (/iPhone|iPad|iPod/.test(userAgent)) os = "iOS";
-
-  if (/Chrome/.test(userAgent) && !/Edge|OPR/.test(userAgent)) browser = "Chrome";
-  else if (/Safari/.test(userAgent) && !/Chrome/.test(userAgent)) browser = "Safari";
-  else if (/Firefox/.test(userAgent)) browser = "Firefox";
-  else if (/Edg/.test(userAgent)) browser = "Edge";
-  else if (/OPR/.test(userAgent)) browser = "Opera";
-
+  let browser = "Unknown";
+  if (ua.includes("Chrome")) browser = "Chrome";
+  else if (ua.includes("Firefox")) browser = "Firefox";
+  else if (ua.includes("Edg")) browser = "Edge";
+  else if (ua.includes("Safari") && !ua.includes("Chrome")) browser = "Safari";
   return { os, browser };
 }
 
-export default function App() {
-  const [isOpen, setIsOpen] = useState(false);
+/* -------- util: log click‑stream events -------- */
+const makeLogger = dispatch => (event, details = {}) =>
+  dispatch({
+    type: "ADD_CLICKSTREAM_EVENT",
+    payload: { ts: new Date().toISOString(), event, ...details }
+  });
+
+/* -------- util: text similarity (Jaccard of word sets) -------- */
+function jaccard(a, b) {
+  const toSet = str =>
+    new Set(
+      str
+        .toLowerCase()
+        .replace(/[^\w\s]/g, "")
+        .split(/\s+/)
+        .filter(Boolean)
+    );
+  const A = toSet(a);
+  const B = toSet(b);
+  const inter = [...A].filter(x => B.has(x)).length;
+  const union = new Set([...A, ...B]).size || 1;
+  return inter / union; // 0..1
+}
+
+export default function Chatbot() {
+  /* -------- global store -------- */
+  const { state, dispatch } = useGlobalStore();
+  const logEvent = makeLogger(dispatch);
+
+  const {
+    clientCorrelationId,
+    metadata: {
+      version    = "1.0.0",
+      page       = window.location.href,
+      os         = "Unknown",
+      browser    = "Unknown",
+      htmlOfPage = ""
+    } = {},
+    clickstream = []
+  } = state;
+
+  /* -------- local state -------- */
+  const [isOpen, setIsOpen]     = useState(false);
   const [messages, setMessages] = useState([
     {
       role: "system",
-      content: `
-You are an Incident Wizard. You need to gather these fields for a ServiceNow incident:
+      content: `You are an Incident Wizard. You need to gather these fields for a ServiceNow incident:
 1. short_description
 2. description
 3. category
-4. subcategory
-5. service
-6. service_offering
-7. configuration_item
-8. state
-9. impact
-10. urgency
 
-**Important**:
-- Ask the user one question at a time until you have enough info.
-- Once you have all fields or the user explicitly says they're done, respond with ONLY the final JSON and no extra text:
+Important:
+• Ask the user one question at a time until you have enough info.
+• When you have all fields or when the user says you're done, respond with ONLY the final JSON and no extra text:
 
 {
   "short_description": "...",
   "description": "...",
-  "category": "...",
-  "subcategory": "...",
-  "service": "...",
-  "service_offering": "...",
-  "configuration_item": "...",
-  "state": "...",
-  "impact": "...",
-  "urgency": "..."
+  "category": "..."
 }
 
-If the user doesn't have or doesn't know a field, set it to "N/A".
-`
+If the user doesn't have or doesn't know a field, set that field to "N/A".`
     }
   ]);
+  const [input, setInput]       = useState("");
+  const [loading, setLoading]   = useState(false);
 
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  // On mount, detect user's OS & browser and insert into system context
+  /* -------- enrich store on mount -------- */
   useEffect(() => {
-    const { os, browser } = getBrowserAndOS();
-    setMessages((prev) => {
-      const newSystemMsg = {
-        role: "system",
-        content: `User environment details: OS = ${os}, Browser = ${browser}.`
-      };
-      const updated = [...prev];
-      // Insert system info as second message
-      updated.splice(1, 0, newSystemMsg);
-      return updated;
-    });
+    if (!clientCorrelationId) {
+      const id = uuidv4();
+      dispatch({ type: "SET_CORRELATION_ID", payload: id });
+      logEvent("correlation_id_set", { id });
+    }
+    const { os: o, browser: b } = detectBrowserAndOS();
+    dispatch({ type: "SET_METADATA", payload: { os: o, browser: b } });
+
+    if (!htmlOfPage) {
+      const html = document.documentElement.outerHTML;
+      dispatch({ type: "SET_METADATA", payload: { htmlOfPage: html } });
+    }
+    logEvent("chatbot_mounted", { page });
+    // eslint‑disable‑next‑line react-hooks/exhaustive-deps
   }, []);
 
-  // Toggle chat window visibility
-  const toggleChat = () => setIsOpen((prev) => !prev);
+  /* -------- helpers -------- */
+  const toggleChat = () => {
+    setIsOpen(p => {
+      const next = !p;
+      logEvent(next ? "chat_opened" : "chat_closed");
+      return next;
+    });
+  };
 
-  // Handle sending a new message from the user
-  const handleSendMessage = async () => {
+  /* -- main send routine ------------------------------------------------ */
+  async function handleSendMessage() {
     if (!input.trim()) return;
+    logEvent("user_message_sent", { textLen: input.length });
 
-    // Append the user's message to the conversation
-    const userMessage = { role: "user", content: input };
-    const updatedMessages = [...messages, userMessage];
-    setMessages(updatedMessages);
+    const conversation = [...messages, { role: "user", content: input }];
+    setMessages(conversation);
     setInput("");
     setLoading(true);
 
     try {
-      // Call the backend chat endpoint with the conversation history
-      const response = await fetch("http://localhost:5000/api/chat", {
-        method: "POST",
+      /* ---- 1. get LLM reply ---- */
+      const chatRes = await fetch("http://localhost:5000/api/chat", {
+        method : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: updatedMessages }),
+        body   : JSON.stringify({ messages: conversation })
       });
+      const chatData = await chatRes.json();
+      if (!chatData.success) throw new Error(chatData.error || "Model error");
 
-      const data = await response.json();
+      let assistantReply = chatData.reply;
+      let assistantMsg   = { role: "assistant", content: assistantReply };
+      logEvent("assistant_reply_received", { textLen: assistantReply.length });
 
-      if (data.success) {
-        let botReply = data.reply;
-        let botMessage = { role: "assistant", content: botReply };
+      /* ---- 2. parse JSON block if present ---- */
+      let parsed = null;
+      try {
+        const idx = assistantReply.indexOf("{");
+        if (idx !== -1) parsed = JSON.parse(assistantReply.slice(idx));
+      } catch {/* ignore */}
 
-        // Attempt to parse the bot's reply as JSON if it starts with '{'
-        let incidentFields;
+      /* ---- 3. if we have all fields, run duplicate check ---- */
+      if (parsed?.description) {
+        logEvent("incident_fields_collected");
+
+        // 3a. pull recent incidents
+        let possibleDuplicate = null;
         try {
-          const curlyIndex = botReply.indexOf("{");
-          if (curlyIndex !== -1) {
-            const jsonPart = botReply.slice(curlyIndex).trim();
-            incidentFields = JSON.parse(jsonPart);
-          }
-        } catch (err) {
-          console.error("Failed to parse JSON:", err);
-        }
+          const incRes = await fetch("http://localhost:5000/incidents?limit=100", {
+            headers: { Accept: "application/json" }
+          });
+          const oldInc = await incRes.json();
 
-        // If a valid final JSON payload is detected, auto-create the incident.
-        if (incidentFields && incidentFields.short_description) {
-          console.log("Parsed incident fields:", incidentFields);
-          // Get OS and Browser details again for the payload
-          const { os, browser } = getBrowserAndOS();
-
-          // Build the payload ensuring any missing fields are set to "N/A"
-          const payload = {
-            short_description: incidentFields.short_description || "N/A",
-            description: incidentFields.description || "N/A",
-            category: incidentFields.category || "N/A",
-            subcategory: incidentFields.subcategory || "N/A",
-            service: incidentFields.service || "N/A",
-            service_offering: incidentFields.service_offering || "N/A",
-            configuration_item: incidentFields.configuration_item || "N/A",
-            state: incidentFields.state || "N/A",
-            impact: incidentFields.impact || "N/A",
-            urgency: incidentFields.urgency || "N/A",
-            u_operating_system: os,
-            u_browser: browser
-          };
-
-          try {
-            const createIncidentResponse = await fetch("http://localhost:5000/create_incident", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(payload)
-            });
-
-            const createData = await createIncidentResponse.json();
-
-            if (createIncidentResponse.ok) {
-              // Incident created successfully
-              botMessage = {
-                role: "assistant",
-                content: `Incident created! Number: ${createData.number}, Sys_ID: ${createData.sys_id}`
-              };
-            } else {
-              botMessage = {
-                role: "assistant",
-                content: `Sorry, incident creation failed:\n${createData.details}`
-              };
+          // 3b. compute similarity against each
+          const threshold = 0.8; // 80 % overlap
+          let bestScore = 0;
+          oldInc.forEach(inc => {
+            const score = jaccard(parsed.description, inc.description || "");
+            if (score > bestScore) {
+              bestScore        = score;
+              possibleDuplicate = score >= threshold ? inc : possibleDuplicate;
             }
-          } catch (err) {
-            console.error("Error calling /create_incident:", err);
-            botMessage = {
-              role: "assistant",
-              content: "Error: Could not create incident."
-            };
-          }
+          });
+        } catch (err) {
+          console.error("Could not fetch incidents:", err);
         }
 
-        // Append the bot's reply to the conversation
-        setMessages((prev) => [...prev, botMessage]);
-      } else {
-        const errorMsg = {
-          role: "assistant",
-          content: data.error || "Error: Unable to get a response from the bot."
+        // 3c. if duplicate found, tell user
+        if (possibleDuplicate) {
+          assistantMsg = {
+            role   : "assistant",
+            content: `This looks very similar to existing incident ${possibleDuplicate.number}. It may be a duplicate.`
+          };
+          setMessages(prev => [...prev, assistantMsg]);
+          setLoading(false);
+          return; // do NOT create a new incident automatically
+        }
+
+        /* ---- 4. create incident (no duplicate) ---- */
+        const payload = {
+          short_description  : parsed.short_description || "N/A",
+          description        : parsed.description       || "N/A",
+          category           : parsed.category          || "N/A",
+          impact             : parsed.impact            || "N/A",
+          urgency            : parsed.urgency           || "N/A",
+          u_version          : version,
+          correlation_id     : clientCorrelationId,
+          u_clickstream_data : clickstream,
+          u_html_of_page     : htmlOfPage
         };
-        setMessages((prev) => [...prev, errorMsg]);
+
+        try {
+          const snRes = await fetch("http://localhost:5000/create_incident", {
+            method : "POST",
+            headers: { "Content-Type": "application/json" },
+            body   : JSON.stringify(payload)
+          });
+          const snData = await snRes.json();
+
+          assistantMsg = snRes.ok
+            ? {
+                role   : "assistant",
+                content: `Incident created successfully.\nNumber: ${snData.number}\nSys_ID: ${snData.sys_id}`
+              }
+            : {
+                role   : "assistant",
+                content: `Incident creation failed (${snRes.status}).\nDetails: ${snData.details}`
+              };
+        } catch (err) {
+          assistantMsg = {
+            role   : "assistant",
+            content: `Network error while creating incident: ${err.message}`
+          };
+        }
       }
-    } catch (error) {
-      const errorMsg = {
-        role: "assistant",
-        content: "Error: Failed to connect to server."
-      };
-      setMessages((prev) => [...prev, errorMsg]);
+
+      setMessages(prev => [...prev, assistantMsg]);
+    } catch (err) {
+      setMessages(prev => [...prev, { role: "assistant", content: `Error: ${err.message}` }]);
     } finally {
       setLoading(false);
     }
-  };
+  }
 
+  /* -------- UI (unchanged except file name) -------- */
   return (
     <div className="app-container">
       <header className="header">
         <h1 className="header-title">IT Support Chatbot</h1>
       </header>
 
-      {/* When the chat window is closed, show a button to open it */}
       {!isOpen && (
         <button onClick={toggleChat} className="small-button" aria-label="Open Chat">
           <img src={logo} alt="Open Chat" />
         </button>
       )}
 
-      {/* Chat window */}
       {isOpen && (
         <div className="chat-container">
-          {/* Chat window header */}
           <div className="header" style={{ padding: "10px", marginBottom: "10px" }}>
             <div style={{ display: "flex", alignItems: "center" }}>
               <img src={logo} alt="Chat Logo" style={{ height: "40px", marginRight: "10px" }} />
               <h2>Incident Wizard Chat</h2>
             </div>
-            <button onClick={toggleChat} style={{ fontSize: "18px", background: "none", border: "none", cursor: "pointer" }}>
-              ✕
+            <button
+              onClick={toggleChat}
+              style={{ fontSize: "16px", background: "none", border: "none", cursor: "pointer" }}
+              aria-label="Close Chat"
+            >
+              Close
             </button>
           </div>
 
-          {/* Message display area */}
           <div className="messages-container">
-            {messages.map((msg, index) => {
-              // Hide system messages from user display
-              if (msg.role === "system") return null;
-              return (
-                <div
-                  key={index}
-                  className={`message ${msg.role === "user" ? "user-message" : "bot-message"}`}
-                >
-                  {msg.content}
+            {messages.map((m, i) =>
+              m.role === "system" ? null : (
+                <div key={i} className={`message ${m.role === "user" ? "user-message" : "bot-message"}`}>
+                  {m.content}
                 </div>
-              );
-            })}
-            {loading && <div className="status">Bot is typing...</div>}
+              )
+            )}
+            {loading && <div className="status">Bot is typing…</div>}
           </div>
 
-          {/* Input area */}
           <div className="input-form">
             <input
               type="text"
               className="input-field"
               value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                // Check if the Enter key is pressed
-                if (e.key === "Enter") {
-                  // Optionally, prevent default behavior if necessary:
-                  // e.preventDefault();
-                  handleSendMessage();
-                }
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === "Enter") handleSendMessage();
               }}
-              placeholder="Type a message..."
+              placeholder="Type a message…"
               disabled={loading}
             />
             <button className="send-button" onClick={handleSendMessage} disabled={loading}>
-              {loading ? "Sending..." : "Send"}
+              {loading ? "Sending…" : "Send"}
             </button>
           </div>
         </div>

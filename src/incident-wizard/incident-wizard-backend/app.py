@@ -85,19 +85,17 @@ def create_incident():
         data = request.get_json()
         if not data:
             return jsonify({"error": "No JSON payload provided"}), 400
-
         short_description = data.get('short_description', 'No short description provided')
         description = data.get('description', 'No description provided')
         category = data.get('category')
-        subcategory = data.get('subcategory')
-        service = data.get('service')
-        service_offering = data.get('service_offering')
-        configuration_item = data.get('configuration_item')
-        operating_system = data.get('u_operating_system')
-        browser = data.get('u_browser')
-        state = data.get('state')
         impact = data.get('impact')
         urgency = data.get('urgency')
+        version = data.get('u_version')
+        clickstream = data.get("u_clickstream_data")
+        correlation_id = data.get("correlation_id")
+        html_of_page = data.get("u_html_of_page")
+        related_issues = data.get("u_related_issues")
+
 
 
         # You can optionally include more fields, like urgency, impact, or custom fields.
@@ -110,15 +108,15 @@ def create_incident():
             "short_description": short_description,
             "description": description,
             "category" : category,
-            "subcategory": subcategory,
-            "business_service": service,
-            "service_offering": service_offering,
-            "cmdb_ci": configuration_item,
-            "u_operating_system": operating_system,
-            "u_browser": browser,
-            "state": state,
             "impact": impact,
-            "urgency": urgency
+            "urgency": urgency,
+            "u_version" : version,
+            "correlation_id" : correlation_id,
+            "u_clickstream_data" : clickstream,
+            "u_html_of_page" : html_of_page,
+            "u_related_issues" : related_issues
+
+
         }
 
         # The URL for creating new incidents via the ServiceNow Table API
@@ -159,6 +157,75 @@ def create_incident():
         print(f"Server Error in /create_incident: {e}")
         return jsonify({"error": str(e)}), 500
 
+@app.route('/incidents', methods=['GET'])
+def get_incidents():
+    """
+    Query ServiceNow for existing incidents.
+
+    Optional query parameters:
+      • limit – max rows to return               (default 50)
+      • since – sys_created_on>=value (YYYY‑MM‑DD) filter
+      • state – filter by incident state number  (e.g. 1 = New)
+
+    Response: 200
+    [
+      {
+        "number"        : "INC0010004",   # (remove if not needed)
+        "description"   : "...",
+        "correlation_id": "123e4567‑e89b‑12d3‑a456‑426614174000"
+      },
+      ...
+    ]
+    """
+    try:
+        limit = int(request.args.get("limit", 50))
+        since = request.args.get("since")   # YYYY‑MM‑DD
+        state = request.args.get("state")   # numeric state code
+
+        # ---- build sysparm_query ----
+        query_parts = []
+        if since:
+            query_parts.append(f"sys_created_on>={since} 00:00:00")
+        if state:
+            query_parts.append(f"state={state}")
+        sysparm_query = "^".join(query_parts) if query_parts else ""
+
+        fields = ",".join(
+            [
+                "number",          # keep for reference; delete if unwanted
+                "description",
+                "correlation_id",
+            ]
+        )
+
+        url = (
+            f"{SN_INSTANCE}"
+            f"?sysparm_query={sysparm_query}"
+            f"&sysparm_fields={fields}"
+            f"&sysparm_limit={limit}"
+        )
+        headers = {"Accept": "application/json"}
+
+        sn_res = requests.get(url, auth=(USERNAME, PASSWORD), headers=headers)
+        if sn_res.status_code != 200:
+            return (
+                jsonify(
+                    {
+                        "error": "Failed to pull incidents",
+                        "status_code": sn_res.status_code,
+                        "details": sn_res.text,
+                    }
+                ),
+                sn_res.status_code,
+            )
+
+        results = sn_res.json().get("result", [])
+        return jsonify(results), 200
+
+    except Exception as e:
+        print(f"Server Error in /incidents: {e}")
+        return jsonify({"error": str(e)}), 500
+    
 
 if __name__ == '__main__':
     # For local development:
