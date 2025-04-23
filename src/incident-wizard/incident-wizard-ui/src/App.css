@@ -1,118 +1,343 @@
+/* Home styles */
+/* Home page container */
+.home {
+  max-width: 800px;
+  margin: 40px auto;
+  padding: 24px;
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+  font-family: 'Arial', sans-serif;
+}
 
+/* Header section */
+.home__header {
+  border-bottom: 1px solid #e0e0e0;
+  padding-bottom: 16px;
+  margin-bottom: 24px;
+  text-align: center;
+}
 
-/* Overall container */
-.app-container {
-    font-family: 'Arial', sans-serif;
-    background-color: #f3f4f6;
-    height: 100vh;
-    display: flex;
+.home__title {
+  font-size: 2rem;
+  color: #0276B1;
+  margin: 0;
+}
+
+.home__info {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  margin-top: 8px;
+}
+
+.home__account,
+.home__balance {
+  font-size: 1rem;
+  color: #333;
+  margin: 0;
+}
+
+/* Transactions list */
+.home__transactions {
+  /* optional extra spacing */
+}
+
+.home__subtitle {
+  font-size: 1.5rem;
+  color: #444;
+  margin-bottom: 12px;
+}
+
+/* Remove default bullets, make flex rows */
+.transactions-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.transactions-list__item {
+  display: flex;
+  justify-content: space-between;
+  background-color: #f7f9ff;
+  padding: 12px 16px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  align-items: center;
+  transition: background 0.2s;
+}
+
+.transactions-list__item:hover {
+  background-color: #e1ebff;
+}
+
+/* Individual item parts */
+.item__date {
+  flex: 1;
+  font-weight: 500;
+  color: #555;
+}
+
+.item__desc {
+  flex: 2;
+  text-align: left;
+  color: #333;
+}
+
+.item__amount {
+  flex: 1;
+  text-align: right;
+  font-weight: bold;
+  color: #0276B1;
+}
+
+/* Responsive tweaks */
+@media (max-width: 600px) {
+  .home__info {
     flex-direction: column;
-    align-items: center;
-    padding: 20px;
+    gap: 4px;
   }
-  
-  /* Header */
-  .header {
-    color: black;
-    width: 100%;
-    text-align: left;
-    padding: 20px;
-    border-radius: 8px;
-  }
-  
-  .header-title {
-    font-size: 24px;
-    font-weight: bold;
-  }
-  
-  /* Chat container */
-  .chat-container {
-    width: 80%;
-    max-width: 600px;
-    background-color: white;
-    border-radius: 10px;
-    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
-    padding: 20px;
-    margin-top: 20px;
-    display: flex;
+  .transactions-list__item {
     flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
   }
-  
-  /* Message area */
-  .messages-container {
-    max-height: 300px;
-    overflow-y: auto;
-    margin-bottom: 20px;
-  }
-  
-  .message {
-    margin-bottom: 10px;
-    padding: 8px;
-    border-radius: 5px;
-    background-color: #f1f1f1;
-    max-width: 85%;
-  }
-  
-  .user-message {
-    background-color: #e0f7fa;
-    align-self: flex-start;
-  }
-  
-  .bot-message {
-    background-color: #cfe2f3;
+  .item__amount {
     align-self: flex-end;
   }
+}
+
+
+
+
+
+/* Position widget at bottom-right */
+.app-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-family: 'Arial', sans-serif;
+  background-color: transparent;
+  padding: 0;
+  width: fit-content;
+  max-width: 350px;
+  z-index: 1000;
+}
+
+/* Header (inside widget) */
+.header {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  color: black;
+  position: relative;            /* allow absolute child positioning */
+  width: 100%;
+  text-align: center;
+  padding: 10px;
+  background-color: rgb(111, 162, 196);
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+}
+
+.header-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: bold;
+  color: white;
+}
+
+/* Close button inside header */
+.close-button {
+  position: absolute;
+  top: 2px;
+  right: 20px;
+  background: transparent;
+  border: none;
+  font-size: 32px;
+  color: white;
+  cursor: pointer;
+}
+
+/* Toggle (open) button */
+.small-button {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background-color: white;
   
-  /* Input form */
-  .input-form {
-    display: flex;
-    align-items: center;
+  border: 10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 10px;
+}
+.small-button img {
+  width: 50px;
+  height: 40px;
+}
+
+/* Chat window panel with fixed size */
+.chat-container {
+  width: 100%;
+  height: 600px; /* fixed height */
+  background-color: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  display: flex;
+  flex-direction: column;
+  margin-top: 10px;
+  overflow: hidden;
+}
+
+/* Scrollable messages area */
+.messages-container {
+  flex: 1;
+  padding: 10px;
+  overflow-y: auto;
+  background-color: #f7f9ff;
+}
+
+.message {
+  margin: 6px 0;
+  padding: 8px 12px;
+  border-radius: 16px;
+  max-width: 80%;
+  line-height: 1.4;
+}
+.user-message {
+  background-color: #0276B1;
+  color: white;
+  align-self: flex-end;
+}
+.bot-message {
+  background-color: #e1eaff;
+  color: #000;
+  align-self: flex-start;
+}
+
+.input-form {
+  display: flex;
+  padding: 10px;
+  background-color: #f0f4ff;
+}
+.input-field {
+  flex: 1;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 8px;
+  margin-right: 6px;
+}
+.input-field:focus {
+  outline: none;
+  border-color: white;
+}
+.send-button {
+  border: none;
+  border-radius: 4px;
+  padding: 8px 12px;
+  cursor: pointer;
+  background-color: #0276B1;
+  color: white;
+}
+.send-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.status {
+  text-align: center;
+  font-style: italic;
+  color: #555;
+  margin: 8px 0;
+}
+
+/* Login page wrapper */
+.login {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: calc(100vh - 40px);
+  padding: 20px;
+
+}
+
+/* Card container */
+.login__card {
+  width: 100%;
+  max-width: 380px;
+  padding: 32px;
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+}
+
+/* Title */
+.login__title {
+  margin: 0 0 24px;
+  font-size: 1.75rem;
+  color: #0276B1;
+  text-align: center;
+}
+
+/* Form layout */
+.login__form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Field wrapper */
+.login__field {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Labels */
+.login__label {
+  margin-bottom: 6px;
+  font-size: 0.9rem;
+  color: #333;
+}
+
+/* Inputs */
+.login__input {
+  padding: 10px 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+.login__input:focus {
+  outline: none;
+  border-color: #0276B1;
+  box-shadow: 0 0 0 2px rgba(2, 118, 177, 0.2);
+}
+
+/* Submit button */
+.login__button {
+  margin-top: 8px;
+  padding: 12px;
+  font-size: 1rem;
+  font-weight: bold;
+  color: #fff;
+  background-color: #0276B1;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.login__button:hover {
+  background-color: #025a8c;
+}
+
+/* Responsive */
+@media (max-width: 500px) {
+  .login__card {
+    padding: 24px;
   }
-  
-  .input-field {
-    width: 100%;
-    padding: 10px;
-    font-size: 16px;
-    border-radius: 5px;
-    border: 1px solid #ccc;
-    margin-right: 10px;
+  .login__title {
+    font-size: 1.5rem;
   }
-  
-  .send-button {
-    background-color: #1e2a78; /* Dark blue */
-    color: white;
-    padding: 10px 15px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-  }
-  
-  .send-button:hover {
-    background-color: #0d1a61; /* Darker blue */
-  }
-  
-  /* Status text */
-  .status {
-    font-size: 16px;
-    margin-top: 20px;
-    color: #555;
-  }
-  
-  .small-button {
-    width: 60px;              /* Adjust width as needed */
-    height: 60px;             /* Adjust height as needed */
-    border-radius: 50%;        /* Makes the button circular */
-    border: 2px solid black;   /* Adds a 2px solid black outline */
-    background-color: transparent; /* Change to a solid color if desired */
-    padding: 0;                /* Remove default padding */
-    cursor: pointer;           /* Pointer cursor for clickability */
-    display: inline-flex;      /* Using flexbox to center content */
-    align-items: center;       /* Center the image vertically */
-    justify-content: center;   /* Center the image horizontally */
-  }
-  
-  .small-button img {
-    width: 100%;              /* Ensure image fills the button */
-    height: 100%;
-    display: block;           /* Remove any extra spacing */
-  }
+}

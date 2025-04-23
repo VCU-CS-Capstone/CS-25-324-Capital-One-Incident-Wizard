@@ -2,7 +2,6 @@ import React from "react";
 import { Link } from 'react-router-dom';
 import logo from './Capital_One-Logo.wine.png';
 
-
 function Layout({ children }) {
     return (
       <div style={styles.container}>
@@ -13,12 +12,10 @@ function Layout({ children }) {
                 <img src={logo} alt="Company Logo" style={styles.logo} />
             </Link>
             <h1>Incident Wizard</h1>
+
           </div>
   
-          {/* Button that routes to /test */}
-          <Link to="/test" style={styles.testButton}>
-            Test Page
-          </Link>
+        
         </header>
   
         <main style={styles.main}>{children}</main>

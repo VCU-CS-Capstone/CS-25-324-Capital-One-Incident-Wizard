@@ -7,6 +7,7 @@ import openai
 import os
 import json
 import requests
+import re   
 
 load_dotenv()  # Load .env environment variables
 
@@ -274,6 +275,7 @@ def get_incidents():
                 "number",          # keep for reference; delete if unwanted
                 "description",
                 "correlation_id",
+                "u_related_issues"
             ]
         )
 

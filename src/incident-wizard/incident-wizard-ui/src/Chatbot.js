@@ -133,98 +133,105 @@ If the user doesn't have or doesn't know a field, set that field to "N/A".`
       } catch {/* ignore */ }
 
       /* ---- 3. if we have all fields, run duplicate check ---- */
-      if (parsed?.description) {
-        logEvent("incident_fields_collected");
+if (parsed?.description) {
+  logEvent("incident_fields_collected");
 
-        // 3a. pull recent incidents
-        let possibleDuplicate = null;
-        try {
-          const incRes = await fetch("http://localhost:5000/incidents?limit=20", {
-            headers: { Accept: "application/json" }
-          });
-          const oldInc = await incRes.json();
+  let possibleDuplicate = null;
+  let currentRelated    = "";
+  const threshold       = 0.8;   // 80 % similarity cut-off
+  let bestScore         = 0;
 
-          // 3b. compute similarity against each
-          const threshold = 0.8; // 80% similarity threshold
-          let bestScore = 0;
-          let bestIncident = null;
+  try {
+    // 3a. get the 20 most-recent incidents
+    const incRes = await fetch("http://localhost:5000/incidents?limit=20", {
+      headers: { Accept: "application/json" }
+    });
+    const recent = await incRes.json();
 
-          for (const inc of oldInc) {
-            try {
-              const cmpRes = await fetch(
-                "http://localhost:5000/compare_descriptions",
-                {
-                  method : "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body   : JSON.stringify({
-                    description1: parsed.description,
-                    description2: inc.description
-                  })
-                }
-              );
-              const cmpData = await cmpRes.json();
-              if (cmpData.success && cmpData.similarity > bestScore) {
-                bestScore = cmpData.similarity;
-                bestIncident = inc;
-              }
-            } catch (err) {
-              console.error("Similarity check failed for", inc.number, err);
-            }
-          }
-
-          // 3c. if best score passes threshold, treat as duplicate
-          if (bestIncident && bestScore >= threshold) {
-            possibleDuplicate = bestIncident;
-            logEvent("duplicate_detected", {
-              number: bestIncident.number,
-              score: bestScore.toFixed(2)
-            });
-          } else {
-            logEvent("no_duplicate_found", {
-              bestScore: bestScore.toFixed(2)
-            });
-          }
-
-        } catch (err) {
-          console.error("Could not fetch incidents:", err);
+    // 3b. compare descriptions
+    for (const inc of recent) {
+      try {
+        const cmpRes = await fetch("http://localhost:5000/compare_descriptions", {
+          method : "POST",
+          headers: { "Content-Type": "application/json" },
+          body   : JSON.stringify({
+            description1: parsed.description,
+            description2: inc.description
+          })
+        });
+        const { success, similarity } = await cmpRes.json();
+        if (success && similarity > bestScore) {
+          bestScore        = similarity;
+          possibleDuplicate = inc;
         }
+      } catch (err) {
+        console.error("Similarity check failed for", inc.number, err);
+      }
+    }
 
-        // 3d. if duplicate found, update its related issues and return
-        if (possibleDuplicate) {
-          const formattedRelated = `Description: "${parsed.short_description}", Correlation ID: ${clientCorrelationId}`;
+    // 3c. accept as duplicate only if similarity ≥ threshold
+    if (possibleDuplicate && bestScore >= threshold) {
+      logEvent("duplicate_detected", {
+        number: possibleDuplicate.number,
+        score : bestScore.toFixed(2)
+      });
+      currentRelated = (possibleDuplicate.u_related_issues || "").trim();
+    } else {
+      logEvent("no_duplicate_found", { bestScore: bestScore.toFixed(2) });
+      possibleDuplicate = null;   // fall through to normal create-flow
+    }
+  } catch (err) {
+    console.error("Could not fetch incidents:", err);
+  }
 
-          assistantMsg = {
-            role   : "assistant",
-            content: `This looks very similar to existing incident ${possibleDuplicate.number} (score ${(possibleDuplicate.score||'')}). Updating its related issues…`
-          };
-          setMessages(prev => [...prev, assistantMsg]);
+  /* 3d. merge and PATCH when duplicate found */
+  if (possibleDuplicate) {
+    setMessages(prev => [
+      ...prev,
+      {
+        role   : "assistant",
+        content: `This looks very similar to existing incident ${possibleDuplicate.number}. Updating its related issues…`
+      }
+    ]);
 
-          try {
-            const updateRes = await fetch(
-              `http://localhost:5000/update_incident/${possibleDuplicate.number}`,
-              {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ u_related_issues: formattedRelated })
-              }
-            );
-            if (!updateRes.ok) throw new Error(`Status ${updateRes.status}`);
+    const shortDesc  = parsed.short_description || parsed.description;
+    const newEntry   = `Description: "${shortDesc}", Correlation ID: ${clientCorrelationId}`;
+    const updatedRel = currentRelated ? `${currentRelated}\n${newEntry}` : newEntry;
 
-            assistantMsg = {
-              role   : "assistant",
-              content: `✅ Incident ${possibleDuplicate.number} updated with related issues.`
-            };
-          } catch (err) {
-            assistantMsg = {
-              role   : "assistant",
-              content: `❌ Failed to update incident ${possibleDuplicate.number}: ${err.message}`
-            };
-          }
-
-          setMessages(prev => [...prev, assistantMsg]);
-          setLoading(false);
-          return;
+    try {
+      const patchRes = await fetch(
+        `http://localhost:5000/update_incident/${possibleDuplicate.number}`,
+        {
+          method : "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body   : JSON.stringify({ u_related_issues: updatedRel })
         }
+      );
+      if (!patchRes.ok) throw new Error(`status ${patchRes.status}`);
+
+      setMessages(prev => [
+        ...prev,
+        {
+          role   : "assistant",
+          content: `✅ Incident ${possibleDuplicate.number} updated with related issues.`
+        }
+      ]);
+    } catch (err) {
+      setMessages(prev => [
+        ...prev,
+        {
+          role   : "assistant",
+          content: `❌ Failed to update incident ${possibleDuplicate.number}: ${err.message}`
+        }
+      ]);
+    }
+
+    setLoading(false);
+    return;   // stop the flow – no new incident created
+  }
+
+
+
 
         /* ---- 4. create incident (no duplicate) ---- */
         const payload = {
@@ -278,9 +285,7 @@ If the user doesn't have or doesn't know a field, set that field to "N/A".`
   /* -------- UI (unchanged except file name) -------- */
   return (
     <div className="app-container">
-      <header className="header">
-        <h1 className="header-title">IT Support Chatbot</h1>
-      </header>
+      
 
       {!isOpen && (
         <button onClick={toggleChat} className="small-button" aria-label="Open Chat">
@@ -297,10 +302,11 @@ If the user doesn't have or doesn't know a field, set that field to "N/A".`
             </div>
             <button
               onClick={toggleChat}
-              style={{ fontSize: "16px", background: "none", border: "none", cursor: "pointer" }}
+              className="close-button"
               aria-label="Close Chat"
+              title="Close"
             >
-              Close
+              ×
             </button>
           </div>
 
