@@ -1,4 +1,4 @@
-// Chatbot.jsx  –  duplicate‑aware
+// Chatbot.jsx  –  duplicate‑aware (updated)
 import React, { useState, useEffect } from "react";
 import { useGlobalStore } from "./GlobalStoreContext";
 import { v4 as uuidv4 } from "uuid";
@@ -27,23 +27,6 @@ const makeLogger = dispatch => (event, details = {}) =>
     type: "ADD_CLICKSTREAM_EVENT",
     payload: { ts: new Date().toISOString(), event, ...details }
   });
-
-/* -------- util: text similarity (Jaccard of word sets) -------- */
-function jaccard(a, b) {
-  const toSet = str =>
-    new Set(
-      str
-        .toLowerCase()
-        .replace(/[^\w\s]/g, "")
-        .split(/\s+/)
-        .filter(Boolean)
-    );
-  const A = toSet(a);
-  const B = toSet(b);
-  const inter = [...A].filter(x => B.has(x)).length;
-  const union = new Set([...A, ...B]).size || 1;
-  return inter / union; // 0..1
-}
 
 export default function Chatbot() {
   /* -------- global store -------- */
@@ -83,6 +66,9 @@ Important:
 }
 
 If the user doesn't have or doesn't know a field, set that field to "N/A".`
+    }, {
+      role: "assistant",
+      content: "Hello! 👋 I’m here to help you with filing a ServiceNow incident. How can I assist you today?"
     }
   ]);
   const [input, setInput]       = useState("");
@@ -144,7 +130,7 @@ If the user doesn't have or doesn't know a field, set that field to "N/A".`
       try {
         const idx = assistantReply.indexOf("{");
         if (idx !== -1) parsed = JSON.parse(assistantReply.slice(idx));
-      } catch {/* ignore */}
+      } catch {/* ignore */ }
 
       /* ---- 3. if we have all fields, run duplicate check ---- */
       if (parsed?.description) {
@@ -153,34 +139,91 @@ If the user doesn't have or doesn't know a field, set that field to "N/A".`
         // 3a. pull recent incidents
         let possibleDuplicate = null;
         try {
-          const incRes = await fetch("http://localhost:5000/incidents?limit=100", {
+          const incRes = await fetch("http://localhost:5000/incidents?limit=20", {
             headers: { Accept: "application/json" }
           });
           const oldInc = await incRes.json();
 
           // 3b. compute similarity against each
-          const threshold = 0.8; // 80 % overlap
+          const threshold = 0.8; // 80% similarity threshold
           let bestScore = 0;
-          oldInc.forEach(inc => {
-            const score = jaccard(parsed.description, inc.description || "");
-            if (score > bestScore) {
-              bestScore        = score;
-              possibleDuplicate = score >= threshold ? inc : possibleDuplicate;
+          let bestIncident = null;
+
+          for (const inc of oldInc) {
+            try {
+              const cmpRes = await fetch(
+                "http://localhost:5000/compare_descriptions",
+                {
+                  method : "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body   : JSON.stringify({
+                    description1: parsed.description,
+                    description2: inc.description
+                  })
+                }
+              );
+              const cmpData = await cmpRes.json();
+              if (cmpData.success && cmpData.similarity > bestScore) {
+                bestScore = cmpData.similarity;
+                bestIncident = inc;
+              }
+            } catch (err) {
+              console.error("Similarity check failed for", inc.number, err);
             }
-          });
+          }
+
+          // 3c. if best score passes threshold, treat as duplicate
+          if (bestIncident && bestScore >= threshold) {
+            possibleDuplicate = bestIncident;
+            logEvent("duplicate_detected", {
+              number: bestIncident.number,
+              score: bestScore.toFixed(2)
+            });
+          } else {
+            logEvent("no_duplicate_found", {
+              bestScore: bestScore.toFixed(2)
+            });
+          }
+
         } catch (err) {
           console.error("Could not fetch incidents:", err);
         }
 
-        // 3c. if duplicate found, tell user
+        // 3d. if duplicate found, update its related issues and return
         if (possibleDuplicate) {
+          const formattedRelated = `Description: "${parsed.short_description}", Correlation ID: ${clientCorrelationId}`;
+
           assistantMsg = {
             role   : "assistant",
-            content: `This looks very similar to existing incident ${possibleDuplicate.number}. It may be a duplicate.`
+            content: `This looks very similar to existing incident ${possibleDuplicate.number} (score ${(possibleDuplicate.score||'')}). Updating its related issues…`
           };
           setMessages(prev => [...prev, assistantMsg]);
+
+          try {
+            const updateRes = await fetch(
+              `http://localhost:5000/update_incident/${possibleDuplicate.number}`,
+              {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ u_related_issues: formattedRelated })
+              }
+            );
+            if (!updateRes.ok) throw new Error(`Status ${updateRes.status}`);
+
+            assistantMsg = {
+              role   : "assistant",
+              content: `✅ Incident ${possibleDuplicate.number} updated with related issues.`
+            };
+          } catch (err) {
+            assistantMsg = {
+              role   : "assistant",
+              content: `❌ Failed to update incident ${possibleDuplicate.number}: ${err.message}`
+            };
+          }
+
+          setMessages(prev => [...prev, assistantMsg]);
           setLoading(false);
-          return; // do NOT create a new incident automatically
+          return;
         }
 
         /* ---- 4. create incident (no duplicate) ---- */
@@ -223,7 +266,10 @@ If the user doesn't have or doesn't know a field, set that field to "N/A".`
 
       setMessages(prev => [...prev, assistantMsg]);
     } catch (err) {
-      setMessages(prev => [...prev, { role: "assistant", content: `Error: ${err.message}` }]);
+      setMessages(prev => [
+        ...prev,
+        { role: "assistant", content: `Error: ${err.message}` }
+      ]);
     } finally {
       setLoading(false);
     }

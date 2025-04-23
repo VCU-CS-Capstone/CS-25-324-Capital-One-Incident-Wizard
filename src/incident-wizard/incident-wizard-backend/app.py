@@ -157,6 +157,81 @@ def create_incident():
         print(f"Server Error in /create_incident: {e}")
         return jsonify({"error": str(e)}), 500
 
+@app.route('/compare_descriptions', methods=['POST'])
+def compare_descriptions():
+    """
+    Expects JSON:
+      {
+        "description1": "First text to compare",
+        "description2": "Second text to compare"
+      }
+
+    Returns 200:
+      { "similarity": 0.73 }
+    """
+    try:
+        data = request.get_json()
+        desc1 = data.get("description1", "").strip()
+        desc2 = data.get("description2", "").strip()
+
+
+        if not desc1 or not desc2:
+            return jsonify({
+                "success": False,
+                "error": "Both 'description1' and 'description2' are required."
+            }), 400
+        print(desc1)
+        print(desc2)
+
+        # Build the prompt for GPT
+        system_msg = {
+            "role": "system",
+            "content": (
+                "You are a helpful assistant that compares two descriptions "
+                "and returns a similarity score between 0 and 1. "
+                "1.0 means the descriptions are identical in overall meaning; "
+                "0.0 means they are completely unrelated."
+            )
+        }
+        user_msg = {
+            "role": "user",
+            "content": (
+                f"Description A:\n{desc1}\n\n"
+                f"Description B:\n{desc2}\n\n"
+                "On a scale from 0 to 1, only output the numeric similarity score "
+                "with up to two decimal places."
+            )
+        }
+
+        # Ask ChatGPT
+        resp = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[system_msg, user_msg],
+            temperature=0.0,
+        )
+        raw = resp.choices[0].message.content.strip()
+
+        # Extract a float 0 ≤ score ≤ 1
+        # First try direct float conversion
+        try:
+            score = float(raw)
+        except ValueError:
+            # Fallback: regex for 0.xxx or 1(.0)
+            m = re.search(r"(?:0(?:\.\d+)?|1(?:\.0+)?)", raw)
+            if not m:
+                raise ValueError(f"Could not parse similarity score from '{raw}'")
+            score = float(m.group())
+
+        # Clamp just in case
+        score = max(0.0, min(1.0, score))
+        print(score)
+        return jsonify({"success": True, "similarity": score}), 200
+    
+
+    except Exception as e:
+        print(f"Server Error in /compare_descriptions: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+    
 @app.route('/incidents', methods=['GET'])
 def get_incidents():
     """
@@ -184,11 +259,15 @@ def get_incidents():
 
         # ---- build sysparm_query ----
         query_parts = []
+        
         if since:
             query_parts.append(f"sys_created_on>={since} 00:00:00")
         if state:
             query_parts.append(f"state={state}")
+
+        query_parts.append("ORDERBYDESCsys_created_on")
         sysparm_query = "^".join(query_parts) if query_parts else ""
+        
 
         fields = ",".join(
             [
@@ -225,7 +304,73 @@ def get_incidents():
     except Exception as e:
         print(f"Server Error in /incidents: {e}")
         return jsonify({"error": str(e)}), 500
-    
+
+@app.route('/update_incident/<string:number>', methods=['PATCH'])
+def update_incident(number):
+    """
+    Update one or more fields on an existing incident, looked up by its INC number.
+
+    URL param:
+      number  – the ServiceNow incident number (e.g. "INC0012345")
+    Payload JSON:
+      any fields you wish to update, e.g. { "u_related_issues": ["ISSUE-1", "ISSUE-2"] }
+
+    Returns 200 + updated fields on success, or an error + status code.
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON payload provided"}), 400
+
+        # 1) Find the sys_id for this incident number
+        lookup_url = f"{SN_INSTANCE}?sysparm_query=number={number}&sysparm_fields=sys_id"
+        lookup_res = requests.get(
+            lookup_url,
+            auth=(USERNAME, PASSWORD),
+            headers={"Accept": "application/json"}
+        )
+        if lookup_res.status_code != 200:
+            return jsonify({
+                "error": "Failed to lookup incident",
+                "status_code": lookup_res.status_code,
+                "details": lookup_res.text
+            }), lookup_res.status_code
+
+        results = lookup_res.json().get("result", [])
+        if not results:
+            return jsonify({"error": f"No incident found with number {number}"}), 404
+
+        sys_id = results[0]["sys_id"]
+
+        # 2) PATCH the record with the provided fields
+        patch_url = f"{SN_INSTANCE}/{sys_id}"
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        }
+        patch_res = requests.patch(
+            patch_url,
+            auth=(USERNAME, PASSWORD),
+            headers=headers,
+            data=json.dumps(data)
+        )
+
+        if patch_res.status_code in (200, 204):
+            # 204 = No Content; assume update succeeded
+            return jsonify({
+                "message": f"Incident {number} updated successfully",
+                "updated_fields": data
+            }), 200
+        else:
+            return jsonify({
+                "error": "Failed to update incident",
+                "status_code": patch_res.status_code,
+                "details": patch_res.text
+            }), patch_res.status_code
+
+    except Exception as e:
+        print(f"Server Error in /update_incident: {e}")
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     # For local development:
