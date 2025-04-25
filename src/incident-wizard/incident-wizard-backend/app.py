@@ -54,7 +54,7 @@ def chat():
 
         # Call the openai Chat Completion endpoint
         response = openai.ChatCompletion.create(
-    model="gpt-3.5-turbo",
+    model="gpt-4",
     messages=messages
 )
 
@@ -206,7 +206,7 @@ def compare_descriptions():
 
         # Ask ChatGPT
         resp = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4",
             messages=[system_msg, user_msg],
             temperature=0.0,
         )

@@ -56,7 +56,9 @@ export default function Chatbot() {
 3. category
 
 Important:
-• Ask the user one question at a time until you have enough info.
+• Before asking the user for the questions, try to offer general solutions to the problem they are facing. 
+• If the user is able to solve the problem using the given general solutions then do not create an incident.
+• If the user is unable to solve the proble using the given general solutions, ask the user one question at a time until you have enough info.
 • When you have all fields or when the user says you're done, respond with ONLY the final JSON and no extra text:
 
 {
